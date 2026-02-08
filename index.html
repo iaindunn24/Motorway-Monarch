@@ -1089,27 +1089,33 @@ const firebaseConfig = {
                     }).addTo(map);
                 }
 
-                const popupContent = `
-                    <div style="font-family: 'Oswald', sans-serif; color: #333; min-width: 220px; padding: 0.5rem;">
-                        <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; color: #0047AB;">${motorway.number}</div>
-                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.name}</div>
-                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.miles} miles</div>
-                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 1rem; color: ${visitedMotorways.has(motorway.number) ? '#00843D' : '#FF8C00'}; font-weight: 600;">
-                            ${visitedMotorways.has(motorway.number) ? '✓ Visited' : '○ Not Visited'}
-                        </div>
-                        ${currentUser ? `
-                            <button onclick="toggleMotorwayFromMap('${motorway.number}')" 
-                                    style="width: 100%; padding: 0.8rem; background: #FF8C00; border: none; 
-                                           color: #fff; font-family: 'Oswald', sans-serif; 
-                                           font-weight: 600; cursor: pointer; text-transform: uppercase;
-                                           border-radius: 5px; font-size: 0.9rem;">
-                                ${visitedMotorways.has(motorway.number) ? 'Mark as Not Visited' : 'Mark as Visited'}
-                            </button>
-                        ` : '<div style="text-align: center; opacity: 0.7; color: #666; padding: 0.5rem;">Sign in to track</div>'}
-                    </div>
-                `;
+                // Create popup with dynamic content that updates each time it opens
+                const popup = L.popup();
                 
-                layer.bindPopup(popupContent);
+                layer.on('click', function() {
+                    const popupContent = `
+                        <div style="font-family: 'Oswald', sans-serif; color: #333; min-width: 220px; padding: 0.5rem;">
+                            <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; color: #0047AB;">${motorway.number}</div>
+                            <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.name}</div>
+                            <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.miles} miles</div>
+                            <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 1rem; color: ${visitedMotorways.has(motorway.number) ? '#00843D' : '#FF8C00'}; font-weight: 600;">
+                                ${visitedMotorways.has(motorway.number) ? '✓ Visited' : '○ Not Visited'}
+                            </div>
+                            ${currentUser ? `
+                                <button onclick="toggleMotorwayFromMap('${motorway.number}')" 
+                                        style="width: 100%; padding: 0.8rem; background: #FF8C00; border: none; 
+                                               color: #fff; font-family: 'Oswald', sans-serif; 
+                                               font-weight: 600; cursor: pointer; text-transform: uppercase;
+                                               border-radius: 5px; font-size: 0.9rem;">
+                                    ${visitedMotorways.has(motorway.number) ? 'Mark as Not Visited' : 'Mark as Visited'}
+                                </button>
+                            ` : '<div style="text-align: center; opacity: 0.7; color: #666; padding: 0.5rem;">Sign in to track</div>'}
+                        </div>
+                    `;
+                    popup.setContent(popupContent);
+                    layer.bindPopup(popup).openPopup();
+                });
+                
                 motorwayLayers[motorway.number] = layer;
             });
         }
@@ -1131,6 +1137,16 @@ const firebaseConfig = {
                 color: isVisited ? '#0047AB' : '#666',
                 weight: isVisited ? 8 : 5,
                 opacity: 0.9
+            });
+        }
+
+        function updateAllMapLayers() {
+            if (!map) return;
+            
+            motorways.forEach(motorway => {
+                if (motorwayLayers[motorway.number]) {
+                    updateMapLayer(motorway.number);
+                }
             });
         }
 
@@ -1204,6 +1220,7 @@ const firebaseConfig = {
                 mapEl.classList.add('visible');
                 listView.classList.add('hidden');
                 initMap();
+                updateAllMapLayers(); // Update all layers to reflect current visited state
                 setTimeout(() => map.invalidateSize(), 100);
             } else if (view === 'leaderboard') {
                 leaderboard.classList.add('visible');
