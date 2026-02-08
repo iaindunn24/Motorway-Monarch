@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorway Monarch - Rule the Roads</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Fira+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        :root {
+            --road-blue: #0047AB;
+            --sign-green: #00843D;
+            --warning-amber: #FF8C00;
+            --concrete-grey: #3C3C3C;
+            --line-white: #FFFFFF;
+            --shadow-deep: rgba(0, 0, 0, 0.4);
+            --crown-gold: #FFD700;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Oswald', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            color: var(--line-white);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 48%,
+                    rgba(255, 255, 255, 0.02) 48%,
+                    rgba(255, 255, 255, 0.02) 52%,
+                    transparent 52%
+                );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            position: relative;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-sign {
+            background: var(--road-blue);
+            display: inline-block;
+            padding: 2rem 4rem;
+            border: 8px solid var(--line-white);
+            box-shadow: 
+                0 0 0 12px var(--road-blue),
+                0 20px 50px var(--shadow-deep);
+            position: relative;
+            transform: perspective(800px) rotateX(2deg);
+        }
+
+        .crown {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin: 0;
+            text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .tagline {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.3em;
+            margin-top: 0.5rem;
+            opacity: 0.9;
+            color: var(--crown-gold);
+        }
+
+        /* Auth Section */
+        .auth-section {
+            background: linear-gradient(135deg, var(--concrete-grey) 0%, #2a2a2a 100%);
+            padding: 2rem;
+            border: 4px solid var(--road-blue);
+            box-shadow: 0 10px 30px var(--shadow-deep);
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .auth-section.hidden {
+            display: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--sign-green) 0%, #006d32 100%);
+            padding: 1.5rem;
+            border: 4px solid var(--line-white);
+            margin: 2rem 0;
+        }
+
+        .user-info.hidden {
+            display: none;
+        }
+
+        .user-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-group {
+            margin: 1rem 0;
+        }
+
+        input {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1rem;
+            border: 2px solid var(--road-blue);
+            background: #2a2a2a;
+            color: var(--line-white);
+            margin: 0.5rem 0;
+        }
+
+        input::placeholder {
+            color: #888;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--sign-green) 0%, #006d32 100%);
+            padding: 1.5rem;
+            border: 4px solid var(--line-white);
+            box-shadow: 
+                0 0 0 2px var(--sign-green),
+                0 10px 30px var(--shadow-deep);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2.5rem;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 20px var(--shadow-deep);
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-primary {
+            background: var(--warning-amber);
+            color: var(--concrete-grey);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--sign-green);
+            color: var(--line-white);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 132, 61, 0.4);
+        }
+
+        .btn-gold {
+            background: var(--crown-gold);
+            color: var(--concrete-grey);
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+        }
+
+        .motorway-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1.2rem;
+            margin-top: 2rem;
+        }
+
+        .motorway-item {
+            background: var(--concrete-grey);
+            border: 3px solid #555;
+            padding: 1.5rem 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .motorway-item:hover {
+            transform: translateY(-3px) scale(1.05);
+            border-color: var(--warning-amber);
+        }
+
+        .motorway-item.visited {
+            background: linear-gradient(135deg, var(--road-blue) 0%, #003580 100%);
+            border-color: var(--line-white);
+            box-shadow: 
+                0 0 0 2px var(--road-blue),
+                0 5px 20px rgba(0, 71, 171, 0.4);
+        }
+
+        .motorway-item.visited::before {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 1.2rem;
+            color: #4AFF4A;
+            text-shadow: 0 0 10px #4AFF4A;
+        }
+
+        .motorway-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .motorway-name {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.65rem;
+            margin-top: 0.3rem;
+            opacity: 0.85;
+            text-transform: uppercase;
+        }
+
+        #map {
+            height: 700px;
+            width: 100%;
+            margin: 2rem 0;
+            border: 4px solid var(--road-blue);
+            box-shadow: 
+                0 0 0 2px var(--line-white),
+                0 20px 60px var(--shadow-deep);
+            display: none;
+        }
+
+        #map.visible {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        #listView.hidden {
+            display: none;
+        }
+
+        .leaderboard {
+            background: linear-gradient(135deg, var(--concrete-grey) 0%, #2a2a2a 100%);
+            padding: 2rem;
+            border: 4px solid var(--crown-gold);
+            box-shadow: 0 20px 60px var(--shadow-deep);
+            margin: 2rem 0;
+            display: none;
+        }
+
+        .leaderboard.visible {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .leaderboard h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--crown-gold);
+            text-transform: uppercase;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard-table th {
+            background: var(--road-blue);
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .leaderboard-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #444;
+            font-family: 'Fira Mono', monospace;
+        }
+
+        .leaderboard-table tr:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .rank {
+            font-size: 1.5rem;
+            font-weight: 700;
+            width: 60px;
+            text-align: center;
+        }
+
+        .rank-1 { color: var(--crown-gold); }
+        .rank-2 { color: #C0C0C0; }
+        .rank-3 { color: #CD7F32; }
+
+        .current-user {
+            background: rgba(0, 71, 171, 0.2);
+            border: 2px solid var(--road-blue);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding: 2rem;
+            opacity: 0.6;
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .header-sign {
+                padding: 1.5rem 2rem;
+            }
+
+            #map {
+                height: 500px;
+            }
+
+            .leaderboard-table {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-box {
+            background: linear-gradient(135deg, var(--concrete-grey) 0%, #2a2a2a 100%);
+            border: 4px solid var(--road-blue);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background: var(--road-blue);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2.5rem;
+            color: #fff;
+            cursor: pointer;
+            padding: 0 1rem;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--warning-amber);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .field {
+            margin-bottom: 1.5rem;
+        }
+
+        .field label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--crown-gold);
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            padding: 1rem;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1rem;
+            border: 2px solid var(--road-blue);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--line-white);
+        }
+
+        .field select option {
+            background: #2a2a2a;
+            color: var(--line-white);
+        }
+
+        .field input:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--crown-gold);
+        }
+
+        .profile-info p {
+            padding: 1rem;
+            background: rgba(0, 71, 171, 0.2);
+            border-left: 4px solid var(--road-blue);
+            margin-bottom: 1rem;
+        }
+
+        .profile-info strong {
+            color: var(--crown-gold);
+            margin-right: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-sign">
+                <div class="crown">👑</div>
+                <h1>Motorway Monarch</h1>
+                <div class="tagline">Rule the Roads</div>
+            </div>
+        </header>
+
+        <!-- Authentication Section -->
+        <div id="authSection" class="auth-section">
+            <h2>Join the Kingdom</h2>
+            <p style="margin: 1rem 0; opacity: 0.8;">Sign in to save your progress and compete on the leaderboard</p>
+            
+            <div class="input-group">
+                <input type="email" id="authEmail" placeholder="Email">
+                <div style="position: relative; max-width: 400px; margin: 0.5rem auto; width: 100%;">
+                    <input type="password" id="authPassword" placeholder="Password" 
+                           style="width: 100%; padding-right: 50px; margin: 0; max-width: none;">
+                    <button type="button" onclick="togglePasswordVisibility()" 
+                            style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); 
+                                   background: none; border: none; cursor: pointer; font-size: 1.3rem; 
+                                   padding: 0.5rem; z-index: 10;">
+                        <span id="passwordToggleIcon">👁️</span>
+                    </button>
+                </div>
+                <input type="text" id="authUsername" placeholder="Username (for sign up only)">
+            </div>
+            
+            <div class="view-toggle">
+                <button class="btn btn-gold" onclick="signUp()">
+                    <span>Create Account</span>
+                </button>
+                <button class="btn btn-secondary" onclick="signIn()">
+                    <span>Sign In</span>
+                </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="btn" onclick="resetPassword()" style="background: transparent; box-shadow: none; text-decoration: underline; padding: 0.5rem; color: #FFD700;">
+                    <span>Forgot Password?</span>
+                </button>
+            </div>
+            
+            <p id="authError" style="color: #ff6b6b; margin-top: 1rem;"></p>
+            <p id="authSuccess" style="color: #4AFF4A; margin-top: 1rem;"></p>
+        </div>
+
+        <!-- User Info Section -->
+        <div id="userInfo" class="user-info hidden">
+            <div class="user-name">
+                <span>👑</span>
+                <span id="username">Monarch</span>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-gold" onclick="openMyAccount()">
+                    <span>My Account</span>
+                </button>
+                <button class="btn btn-primary" onclick="signOut()">
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Motorways Visited</div>
+                <div class="stat-value" id="visitedCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Motorways</div>
+                <div class="stat-value" id="totalCount">48</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Miles Covered</div>
+                <div class="stat-value" id="milesCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Completion Rate</div>
+                <div class="stat-value" id="completionRate">0%</div>
+            </div>
+        </div>
+
+        <!-- View Toggle -->
+        <div class="view-toggle">
+            <button class="btn btn-secondary" onclick="toggleView('list')">
+                <span>📋 List View</span>
+            </button>
+            <button class="btn btn-secondary" onclick="toggleView('map')">
+                <span>🗺️ Map View</span>
+            </button>
+            <button class="btn btn-gold" onclick="toggleView('leaderboard')">
+                <span>👑 Leaderboard</span>
+            </button>
+            <button class="btn btn-primary" onclick="resetProgress()">
+                <span>Reset All</span>
+            </button>
+        </div>
+
+        <!-- Map View -->
+        <div id="map"></div>
+
+        <!-- List View -->
+        <div id="listView">
+            <div class="motorway-grid" id="motorwayGrid"></div>
+        </div>
+
+        <!-- Account Modal -->
+        <div id="accountModal" class="modal-overlay hidden" onclick="if(event.target===this) closeAccountModal()">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2 id="modalTitle">My Account</h2>
+                    <button class="close-btn" onclick="closeAccountModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="editView">
+                        <div class="field">
+                            <label>Username</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="newUsername" placeholder="New username">
+                                <button class="btn btn-gold" onclick="updateUsername()"><span>Update</span></button>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Location (Optional)</label>
+                            <input type="text" id="userLocation" placeholder="e.g., London, Manchester">
+                        </div>
+                        <div class="field">
+                            <label>Favourite Motorway</label>
+                            <select id="favouriteMotorway"></select>
+                        </div>
+                        <button class="btn btn-secondary" onclick="saveSettings()" style="width: 100%; margin-top: 1rem;">
+                            <span>Save Settings</span>
+                        </button>
+                    </div>
+                    <div id="viewProfile" class="hidden profile-info">
+                        <p><strong>Username:</strong> <span id="vUsername"></span></p>
+                        <p><strong>Location:</strong> <span id="vLocation"></span></p>
+                        <p><strong>Favourite:</strong> <span id="vFavourite"></span></p>
+                        <p><strong>Visited:</strong> <span id="vVisited"></span></p>
+                        <p><strong>Miles:</strong> <span id="vMiles"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div id="leaderboard" class="leaderboard">
+            <h2>🏆 Kingdom Leaderboard 🏆</h2>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Monarch</th>
+                        <th>Motorways</th>
+                        <th>Miles</th>
+                        <th>Completion</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem;">
+                            Loading leaderboard...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            Motorway Monarch &copy; 2026 - Track your journey across Britain's motorway network
+        </footer>
+    </div>
+
+    <script>
+        // NOTE: You'll need to replace these with your actual Firebase config
+        // Get this from Firebase Console > Project Settings > Your Apps > Firebase SDK snippet
+const firebaseConfig = {
+  apiKey: "AIzaSyCxY47jDiIeGLv1mFEdwXzG5kriSzl3eWs",
+  authDomain: "motorway-monarch.firebaseapp.com",
+  projectId: "motorway-monarch",
+  storageBucket: "motorway-monarch.firebasestorage.app",
+  messagingSenderId: "21853198292",
+  appId: "1:21853198292:web:e521c596b35734906f27d",
+  measurementId: "G-R7MRGL3DXL"
+};
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const motorways = [
+            { number: 'M1', name: 'London - Leeds', miles: 193, coords: [[51.5074, -0.1278], [51.6547, -0.3962], [52.0406, -0.7594], [52.2297, -0.8897], [52.5695, -1.1743], [52.9225, -1.4746], [53.3308, -1.3659], [53.8008, -1.5491]] },
+            { number: 'M2', name: 'Medway', miles: 26, coords: [[51.3555, 0.5099], [51.3744, 0.6855], [51.3891, 0.7845]] },
+            { number: 'M3', name: 'London - Southampton', miles: 59, coords: [[51.4074, -0.4078], [51.3074, -0.5578], [51.2653, -0.7486], [51.1789, -1.0211], [51.0537, -1.3088], [50.9097, -1.4044]] },
+            { number: 'M4', name: 'London - South Wales', miles: 189, coords: [[51.4892, -0.4728], [51.5074, -0.6278], [51.4816, -0.9735], [51.4529, -1.3342], [51.4584, -1.7848], [51.4816, -2.5979], [51.4816, -3.1791]] },
+            { number: 'M5', name: 'Birmingham - Exeter', miles: 163, coords: [[52.4862, -1.8904], [52.1872, -2.2204], [51.8987, -2.0783], [51.7520, -2.2296], [51.4545, -2.5879], [51.0198, -2.7266], [50.8184, -3.0339], [50.7184, -3.5339]] },
+            { number: 'M6', name: 'Rugby - Carlisle', miles: 230, coords: [[52.3707, -1.2651], [52.4862, -1.8904], [52.5911, -2.1269], [52.8007, -2.1199], [53.0765, -2.1787], [53.3808, -2.3426], [53.4808, -2.2426], [53.6489, -2.5370], [53.7632, -2.7031], [54.0487, -2.7688], [54.3781, -2.9609], [54.6516, -3.0507], [54.8951, -2.9382]] },
+            { number: 'M8', name: 'Edinburgh - Glasgow', miles: 60, coords: [[55.9533, -3.1883], [55.9264, -3.4308], [55.8842, -3.8818], [55.8642, -4.2518]] },
+            { number: 'M9', name: 'Edinburgh - Stirling', miles: 33, coords: [[55.9533, -3.1883], [55.9842, -3.4119], [56.0344, -3.6233], [56.1165, -3.9369]] },
+            { number: 'M11', name: 'London - Cambridge', miles: 55, coords: [[51.5774, 0.0022], [51.6774, 0.0622], [51.7839, 0.1050], [51.8839, 0.1450], [52.0230, 0.1751], [52.2053, 0.1218]] },
+            { number: 'M18', name: 'Rotherham - Goole', miles: 26, coords: [[53.4334, -1.3619], [53.5551, -1.1276], [53.6401, -0.9633], [53.7017, -0.8664]] },
+            { number: 'M20', name: 'Swanley - Folkestone', miles: 51, coords: [[51.4000, 0.1700], [51.3555, 0.3518], [51.2928, 0.5211], [51.1889, 0.7633], [51.0814, 1.1856]] },
+            { number: 'M23', name: 'Hooley - Crawley', miles: 16, coords: [[51.2928, -0.1733], [51.2328, -0.1633], [51.1537, -0.1733], [51.1137, -0.1833]] },
+            { number: 'M25', name: 'London Orbital', miles: 117, coords: [[51.5074, -0.1278]] },
+            { number: 'M26', name: 'Sevenoaks - Wrotham', miles: 10, coords: [[51.2761, 0.2389], [51.2989, 0.2889], [51.3089, 0.3289]] },
+            { number: 'M27', name: 'Cadnam - Portsmouth', miles: 25, coords: [[50.8765, -1.5899], [50.8920, -1.3872], [50.8720, -1.1872], [50.8520, -1.0872]] },
+            { number: 'M32', name: 'Bristol Spur', miles: 4, coords: [[51.4545, -2.5879], [51.4645, -2.5779], [51.4745, -2.5679]] },
+            { number: 'M40', name: 'London - Birmingham', miles: 89, coords: [[51.5574, -0.4978], [51.6074, -0.6978], [51.7523, -0.9422], [51.8944, -1.0711], [52.0906, -1.3397], [52.2357, -1.5176], [52.4862, -1.8904]] },
+            { number: 'M42', name: 'Bromsgrove - Measham', miles: 40, coords: [[52.3357, -2.0559], [52.4157, -1.8459], [52.5281, -1.7358], [52.6381, -1.5658], [52.7081, -1.4658]] },
+            { number: 'M45', name: 'Coventry Spur', miles: 7, coords: [[52.3681, -1.2676], [52.3881, -1.2376], [52.3981, -1.2076]] },
+            { number: 'M48', name: 'Aust - Chepstow', miles: 12, coords: [[51.6092, -2.6431], [51.6192, -2.6631], [51.6292, -2.6731]] },
+            { number: 'M49', name: 'M4 - M5 Link', miles: 5, coords: [[51.5092, -2.6031], [51.5192, -2.6231], [51.5292, -2.6331]] },
+            { number: 'M50', name: 'Ross Spur', miles: 21, coords: [[51.8922, -2.5833], [51.9522, -2.5233], [52.0422, -2.4533]] },
+            { number: 'M53', name: 'Mersey Gateway', miles: 18, coords: [[53.4015, -2.9106], [53.3715, -2.9506], [53.3415, -3.0206]] },
+            { number: 'M54', name: 'Telford', miles: 23, coords: [[52.6766, -2.4469], [52.6866, -2.3869], [52.6966, -2.3269], [52.7066, -2.2869]] },
+            { number: 'M55', name: 'Preston - Blackpool', miles: 12, coords: [[53.7632, -2.7031], [53.7832, -2.8531], [53.8075, -2.9536], [53.8175, -3.0536]] },
+            { number: 'M56', name: 'Manchester - Chester', miles: 33, coords: [[53.4708, -2.2926], [53.4008, -2.4326], [53.3508, -2.6109], [53.2708, -2.7709], [53.1908, -2.8909]] },
+            { number: 'M57', name: 'Liverpool Outer Ring', miles: 10, coords: [[53.4808, -2.9426], [53.4908, -2.9126], [53.5008, -2.8826]] },
+            { number: 'M58', name: 'Ormskirk Spur', miles: 12, coords: [[53.4808, -2.9426], [53.5108, -2.9226], [53.5408, -2.8826]] },
+            { number: 'M60', name: 'Manchester Orbital', miles: 36, coords: [[53.4808, -2.2426]] },
+            { number: 'M61', name: 'Manchester - Preston', miles: 20, coords: [[53.5208, -2.3826], [53.5908, -2.4926], [53.6608, -2.5826], [53.7632, -2.7031]] },
+            { number: 'M62', name: 'Liverpool - Hull', miles: 107, coords: [[53.4084, -2.9916], [53.4508, -2.7426], [53.4808, -2.2426], [53.5651, -1.9276], [53.6956, -1.5367], [53.7456, -0.9367], [53.7656, -0.5367], [53.7456, -0.3367]] },
+            { number: 'M65', name: 'Preston - Colne', miles: 25, coords: [[53.7632, -2.7031], [53.7932, -2.5531], [53.8265, -2.3704], [53.8565, -2.1704]] },
+            { number: 'M66', name: 'Bury Spur', miles: 8, coords: [[53.5933, -2.2976], [53.6033, -2.2776], [53.6133, -2.2576]] },
+            { number: 'M67', name: 'Hyde Bypass', miles: 4, coords: [[53.4508, -2.0826], [53.4608, -2.0726], [53.4708, -2.0626]] },
+            { number: 'M69', name: 'Coventry - Leicester', miles: 15, coords: [[52.4068, -1.5197], [52.4768, -1.4197], [52.5569, -1.2618], [52.6369, -1.1318]] },
+            { number: 'M73', name: 'East of Glasgow', miles: 7, coords: [[55.8642, -4.2518], [55.8742, -4.2118], [55.8842, -4.1718]] },
+            { number: 'M74', name: 'Glasgow - Gretna', miles: 73, coords: [[55.8642, -4.2518], [55.6442, -3.9918], [55.4142, -3.5582], [55.1869, -3.3582], [55.0069, -3.0582]] },
+            { number: 'M77', name: 'Glasgow - Kilmarnock', miles: 20, coords: [[55.8642, -4.2518], [55.7742, -4.3418], [55.6611, -4.4756], [55.6111, -4.4956]] },
+            { number: 'M80', name: 'Glasgow - Stirling', miles: 25, coords: [[55.8642, -4.2518], [55.9342, -4.0918], [56.0142, -3.9969], [56.1165, -3.9369]] },
+            { number: 'M90', name: 'Edinburgh - Perth', miles: 36, coords: [[55.9533, -3.1883], [56.0733, -3.2483], [56.1858, -3.3273], [56.2958, -3.3973], [56.3958, -3.4373]] },
+            { number: 'M180', name: 'Thorne - Grimsby', miles: 25, coords: [[53.6109, -0.9633], [53.5909, -0.7533], [53.5809, -0.4333], [53.5679, -0.0759]] },
+            { number: 'M181', name: 'Scunthorpe', miles: 2, coords: [[53.5909, -0.6533], [53.5959, -0.6483], [53.6009, -0.6433]] },
+            { number: 'M271', name: 'Redbridge Spur', miles: 2, coords: [[50.9197, -1.4844], [50.9247, -1.4794], [50.9297, -1.4744]] },
+            { number: 'M275', name: 'Portsmouth', miles: 2, coords: [[50.8197, -1.0844], [50.8247, -1.0794], [50.8297, -1.0744]] },
+            { number: 'M602', name: 'Salford', miles: 4, coords: [[53.4808, -2.2926], [53.4858, -2.2876], [53.4908, -2.2826]] },
+            { number: 'M606', name: 'Bradford', miles: 3, coords: [[53.7955, -1.7599], [53.8005, -1.7549], [53.8055, -1.7499]] },
+            { number: 'M621', name: 'Leeds', miles: 7, coords: [[53.7755, -1.5678], [53.7855, -1.5578], [53.7955, -1.5478]] },
+            { number: 'M876', name: 'Bonnybridge - Kincardine', miles: 7, coords: [[56.0222, -3.8889], [56.0422, -3.8189], [56.0622, -3.7489]] }
+        ];
+
+        let visitedMotorways = new Set();
+        let map = null;
+        let motorwayLayers = {};
+        let currentUser = null;
+        let currentView = 'list';
+
+        // Auth state observer
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                loadUserData();
+            } else {
+                currentUser = null;
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+                visitedMotorways = new Set();
+                renderMotorways();
+            }
+        });
+
+        async function signUp() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const username = document.getElementById('authUsername').value;
+            const errorEl = document.getElementById('authError');
+            const successEl = document.getElementById('authSuccess');
+
+            if (!email || !password || !username) {
+                errorEl.textContent = 'Please fill in all fields';
+                successEl.textContent = '';
+                return;
+            }
+
+            // Check for duplicate username
+            try {
+                const usernameCheck = await db.collection('users')
+                    .where('username', '==', username)
+                    .get();
+                
+                if (!usernameCheck.empty) {
+                    errorEl.textContent = 'Username already taken. Please choose another.';
+                    successEl.textContent = '';
+                    return;
+                }
+
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                
+                // Optional: Send email verification
+                // Uncomment these lines if you want email verification:
+                // await userCredential.user.sendEmailVerification();
+                // successEl.textContent = 'Account created! Please check your email to verify.';
+                
+                await db.collection('users').doc(userCredential.user.uid).set({
+                    username: username,
+                    visitedMotorways: [],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                errorEl.textContent = '';
+                successEl.textContent = 'Account created successfully!';
+            } catch (error) {
+                errorEl.textContent = error.message;
+                successEl.textContent = '';
+            }
+        }
+
+        async function signIn() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const errorEl = document.getElementById('authError');
+            const successEl = document.getElementById('authSuccess');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter email and password';
+                successEl.textContent = '';
+                return;
+            }
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                errorEl.textContent = '';
+                successEl.textContent = '';
+            } catch (error) {
+                if (error.code === 'auth/wrong-password') {
+                    errorEl.textContent = 'Incorrect password. Please try again.';
+                } else if (error.code === 'auth/user-not-found') {
+                    errorEl.textContent = 'No account found with this email address.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorEl.textContent = 'Please enter a valid email address.';
+                } else if (error.code === 'auth/invalid-credential') {
+                    // This could be either wrong email or wrong password
+                    errorEl.textContent = 'Incorrect email or password. Please try again.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorEl.textContent = 'Too many failed attempts. Please try again later.';
+                } else {
+                    errorEl.textContent = 'Login failed. Please check your email and password.';
+                }
+                successEl.textContent = '';
+            }
+        }
+
+        async function resetPassword() {
+            const email = document.getElementById('authEmail').value;
+            const errorEl = document.getElementById('authError');
+            const successEl = document.getElementById('authSuccess');
+
+            if (!email) {
+                errorEl.textContent = 'Please enter your email address first';
+                successEl.textContent = '';
+                return;
+            }
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                errorEl.textContent = '';
+                successEl.textContent = 'Password reset email sent! Check your inbox.';
+            } catch (error) {
+                errorEl.textContent = error.message;
+                successEl.textContent = '';
+            }
+        }
+
+        async function signOut() {
+            await auth.signOut();
+            // Clear the login form fields
+            document.getElementById('authEmail').value = '';
+            document.getElementById('authPassword').value = '';
+            document.getElementById('authUsername').value = '';
+        }
+
+        async function loadUserData() {
+            if (!currentUser) return;
+
+            const userDoc = await db.collection('users').doc(currentUser.uid).get();
+            const userData = userDoc.data();
+            
+            document.getElementById('username').textContent = userData.username;
+            visitedMotorways = new Set(userData.visitedMotorways || []);
+            renderMotorways();
+            loadLeaderboard();
+        }
+
+        async function saveUserData() {
+            if (!currentUser) return;
+
+            await db.collection('users').doc(currentUser.uid).update({
+                visitedMotorways: [...visitedMotorways],
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            loadLeaderboard();
+        }
+
+        async function loadLeaderboard() {
+            const leaderboardBody = document.getElementById('leaderboardBody');
+            
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                const users = [];
+
+                usersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const visited = data.visitedMotorways || [];
+                    const miles = motorways
+                        .filter(m => visited.includes(m.number))
+                        .reduce((sum, m) => sum + m.miles, 0);
+                    
+                    users.push({
+                        id: doc.id,
+                        username: data.username,
+                        motorwaysCount: visited.length,
+                        miles: miles,
+                        completion: Math.round((visited.length / motorways.length) * 100)
+                    });
+                });
+
+                users.sort((a, b) => {
+                    if (b.motorwaysCount !== a.motorwaysCount) {
+                        return b.motorwaysCount - a.motorwaysCount;
+                    }
+                    return b.miles - a.miles;
+                });
+
+                leaderboardBody.innerHTML = users.map((user, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                    const isCurrentUser = currentUser && user.id === currentUser.uid;
+                    
+                    return `
+                        <tr class="${isCurrentUser ? 'current-user' : ''}">
+                            <td class="rank ${rankClass}">${rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</td>
+                            <td>
+                                <strong style="cursor: pointer; color: #FFD700; text-decoration: underline;" onclick="viewUserProfile('${user.id}')">${user.username}</strong> 
+                                ${isCurrentUser ? '(You)' : ''}
+                            </td>
+                            <td>${user.motorwaysCount}</td>
+                            <td>${user.miles}</td>
+                            <td>${user.completion}%</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                leaderboardBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #ff6b6b;">
+                            Error loading leaderboard
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function initMap() {
+            if (map) return;
+            
+            map = L.map('map', {
+                center: [54.5, -3.5],
+                zoom: 6,
+                minZoom: 5,
+                maxZoom: 18,
+                maxBounds: [
+                    [49.5, -11.0],
+                    [61.0, 2.5]
+                ],
+                maxBoundsViscosity: 1.0
+            });
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            motorways.forEach(motorway => {
+                let color = visitedMotorways.has(motorway.number) ? '#0047AB' : '#666';
+                let weight = visitedMotorways.has(motorway.number) ? 8 : 5;
+                
+                let layer;
+                if (motorway.number === 'M25' || motorway.number === 'M60') {
+                    layer = L.circle(motorway.coords[0], {
+                        color: color,
+                        weight: weight,
+                        fillOpacity: 0,
+                        opacity: 0.9,
+                        radius: motorway.number === 'M25' ? 25000 : 15000
+                    }).addTo(map);
+                } else if (motorway.coords.length === 1) {
+                    layer = L.circle(motorway.coords[0], {
+                        color: color,
+                        weight: weight,
+                        fillColor: color,
+                        fillOpacity: 0.5,
+                        opacity: 0.9,
+                        radius: 3000
+                    }).addTo(map);
+                } else {
+                    layer = L.polyline(motorway.coords, {
+                        color: color,
+                        weight: weight,
+                        opacity: 0.9,
+                        smoothFactor: 1
+                    }).addTo(map);
+                }
+
+                const popupContent = `
+                    <div style="font-family: 'Oswald', sans-serif; color: #333; min-width: 220px; padding: 0.5rem;">
+                        <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; color: #0047AB;">${motorway.number}</div>
+                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.name}</div>
+                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 0.3rem; color: #666;">${motorway.miles} miles</div>
+                        <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 1rem; color: ${visitedMotorways.has(motorway.number) ? '#00843D' : '#FF8C00'}; font-weight: 600;">
+                            ${visitedMotorways.has(motorway.number) ? '✓ Visited' : '○ Not Visited'}
+                        </div>
+                        ${currentUser ? `
+                            <button onclick="toggleMotorwayFromMap('${motorway.number}')" 
+                                    style="width: 100%; padding: 0.8rem; background: #FF8C00; border: none; 
+                                           color: #fff; font-family: 'Oswald', sans-serif; 
+                                           font-weight: 600; cursor: pointer; text-transform: uppercase;
+                                           border-radius: 5px; font-size: 0.9rem;">
+                                ${visitedMotorways.has(motorway.number) ? 'Mark as Not Visited' : 'Mark as Visited'}
+                            </button>
+                        ` : '<div style="text-align: center; opacity: 0.7; color: #666; padding: 0.5rem;">Sign in to track</div>'}
+                    </div>
+                `;
+                
+                layer.bindPopup(popupContent);
+                motorwayLayers[motorway.number] = layer;
+            });
+        }
+
+        function toggleMotorwayFromMap(number) {
+            toggleMotorway(number);
+            updateMapLayer(number);
+            map.closePopup();
+            setTimeout(() => motorwayLayers[number].openPopup(), 100);
+        }
+
+        function updateMapLayer(number) {
+            if (!map) return;
+            
+            const layer = motorwayLayers[number];
+            const isVisited = visitedMotorways.has(number);
+            
+            layer.setStyle({
+                color: isVisited ? '#0047AB' : '#666',
+                weight: isVisited ? 8 : 5,
+                opacity: 0.9
+            });
+        }
+
+        function renderMotorways() {
+            const grid = document.getElementById('motorwayGrid');
+            grid.innerHTML = '';
+            
+            motorways.forEach((motorway) => {
+                const item = document.createElement('div');
+                item.className = 'motorway-item' + (visitedMotorways.has(motorway.number) ? ' visited' : '');
+                item.innerHTML = `
+                    <div class="motorway-number">${motorway.number}</div>
+                    <div class="motorway-name">${motorway.name}</div>
+                `;
+                item.onclick = () => {
+                    if (currentUser) {
+                        toggleMotorway(motorway.number);
+                        // Update map if it exists
+                        if (map && motorwayLayers[motorway.number]) {
+                            updateMapLayer(motorway.number);
+                        }
+                    } else {
+                        alert('Please sign in to track your progress');
+                    }
+                };
+                grid.appendChild(item);
+            });
+            
+            updateStats();
+        }
+
+        function toggleMotorway(number) {
+            if (!currentUser) return;
+            
+            if (visitedMotorways.has(number)) {
+                visitedMotorways.delete(number);
+            } else {
+                visitedMotorways.add(number);
+            }
+            
+            renderMotorways();
+            saveUserData();
+        }
+
+        function updateStats() {
+            const visited = visitedMotorways.size;
+            const total = motorways.length;
+            const miles = motorways
+                .filter(m => visitedMotorways.has(m.number))
+                .reduce((sum, m) => sum + m.miles, 0);
+            const completion = Math.round((visited / total) * 100);
+
+            document.getElementById('visitedCount').textContent = visited;
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('milesCount').textContent = miles;
+            document.getElementById('completionRate').textContent = completion + '%';
+        }
+
+        function toggleView(view) {
+            currentView = view;
+            
+            const mapEl = document.getElementById('map');
+            const listView = document.getElementById('listView');
+            const leaderboard = document.getElementById('leaderboard');
+            
+            mapEl.classList.remove('visible');
+            listView.classList.remove('hidden');
+            leaderboard.classList.remove('visible');
+            
+            if (view === 'map') {
+                mapEl.classList.add('visible');
+                listView.classList.add('hidden');
+                initMap();
+                setTimeout(() => map.invalidateSize(), 100);
+            } else if (view === 'leaderboard') {
+                leaderboard.classList.add('visible');
+                listView.classList.add('hidden');
+                loadLeaderboard();
+            }
+        }
+
+        function resetProgress() {
+            if (!currentUser) {
+                alert('Please sign in first');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to reset all progress?')) {
+                visitedMotorways.clear();
+                renderMotorways();
+                saveUserData();
+                if (currentView === 'map' && map) {
+                    motorways.forEach(m => updateMapLayer(m.number));
+                }
+            }
+        }
+
+        // Account Functions
+        function togglePasswordVisibility() {
+            const input = document.getElementById('authPassword');
+            const icon = document.getElementById('passwordToggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                icon.textContent = '👁️';
+            }
+        }
+
+        function openMyAccount() {
+            if (!currentUser) {
+                alert('Please sign in first');
+                return;
+            }
+            document.getElementById('modalTitle').textContent = 'My Account';
+            document.getElementById('editView').classList.remove('hidden');
+            document.getElementById('viewProfile').classList.add('hidden');
+            loadMyAccount();
+            document.getElementById('accountModal').classList.remove('hidden');
+        }
+
+        function closeAccountModal() {
+            document.getElementById('accountModal').classList.add('hidden');
+        }
+
+        async function loadMyAccount() {
+            const select = document.getElementById('favouriteMotorway');
+            select.innerHTML = '<option value="">Select a motorway...</option>';
+            
+            motorways.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.number;
+                opt.textContent = `${m.number} - ${m.name}`;
+                select.appendChild(opt);
+            });
+            
+            if (currentUser) {
+                try {
+                    const doc = await db.collection('users').doc(currentUser.uid).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('newUsername').value = data.username || '';
+                        document.getElementById('userLocation').value = data.location || '';
+                        document.getElementById('favouriteMotorway').value = data.favouriteMotorway || '';
+                    }
+                } catch (e) {
+                    console.error('Error loading account:', e);
+                }
+            }
+        }
+
+        async function updateUsername() {
+            const newName = document.getElementById('newUsername').value.trim();
+            if (!newName || newName.length < 3 || newName.length > 20) {
+                alert('Username must be between 3 and 20 characters');
+                return;
+            }
+            
+            // Get current username to compare
+            let currentUsername = '';
+            try {
+                const currentDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (currentDoc.exists) {
+                    currentUsername = currentDoc.data().username;
+                }
+            } catch (e) {
+                console.error('Error getting current username:', e);
+                alert('Error loading your current username. Please try again.');
+                return;
+            }
+            
+            // If username hasn't changed, no need to update
+            if (currentUsername === newName) {
+                alert('This is already your username');
+                return;
+            }
+            
+            // Check for duplicate username (same as signUp does)
+            try {
+                const usernameCheck = await db.collection('users')
+                    .where('username', '==', newName)
+                    .get();
+                
+                if (!usernameCheck.empty) {
+                    // Make sure it's not the current user's own document
+                    const isDuplicate = usernameCheck.docs.some(doc => doc.id !== currentUser.uid);
+                    if (isDuplicate) {
+                        alert('Username "' + newName + '" is already taken. Please choose another.');
+                        document.getElementById('newUsername').value = currentUsername;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Error checking username:', e);
+                alert('Error checking username availability. Please try again.');
+                document.getElementById('newUsername').value = currentUsername;
+                return;
+            }
+            
+            // Username is available, proceed with update
+            try {
+                // Update username in users collection
+                await db.collection('users').doc(currentUser.uid).update({ 
+                    username: newName 
+                });
+                
+                // Update leaderboard if exists
+                try {
+                    const leaderboardDoc = await db.collection('leaderboard').doc(currentUser.uid).get();
+                    if (leaderboardDoc.exists) {
+                        await db.collection('leaderboard').doc(currentUser.uid).update({ 
+                            username: newName 
+                        });
+                    }
+                } catch (leaderboardError) {
+                    console.log('Leaderboard update skipped');
+                }
+                
+                // Update the displayed username immediately
+                document.getElementById('username').textContent = newName;
+                
+                // Reload leaderboard to show updated name
+                await loadLeaderboard();
+                
+                alert('Username updated successfully!');
+            } catch (e) {
+                console.error('Error updating username:', e);
+                document.getElementById('newUsername').value = currentUsername;
+                alert('Error updating username: ' + e.message);
+            }
+        }
+
+        async function saveSettings() {
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    location: document.getElementById('userLocation').value.trim(),
+                    favouriteMotorway: document.getElementById('favouriteMotorway').value
+                });
+                alert('Settings saved successfully!');
+            } catch (e) {
+                console.error('Error saving settings:', e);
+                alert('Error saving settings. Please try again.');
+            }
+        }
+
+        function viewUserProfile(userId) {
+            document.getElementById('modalTitle').textContent = 'User Profile';
+            document.getElementById('editView').classList.add('hidden');
+            document.getElementById('viewProfile').classList.remove('hidden');
+            loadUserProfile(userId);
+            document.getElementById('accountModal').classList.remove('hidden');
+        }
+
+        async function loadUserProfile(userId) {
+            try {
+                const doc = await db.collection('users').doc(userId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('vUsername').textContent = data.username || 'Unknown';
+                    document.getElementById('vLocation').textContent = data.location || 'Not specified';
+                    
+                    const fav = motorways.find(m => m.number === data.favouriteMotorway);
+                    document.getElementById('vFavourite').textContent = fav ? `${fav.number} - ${fav.name}` : 'Not specified';
+                    
+                    const visited = (data.visitedMotorways || []).length;
+                    document.getElementById('vVisited').textContent = `${visited} / 48`;
+                    
+                    const miles = motorways
+                        .filter(m => (data.visitedMotorways || []).includes(m.number))
+                        .reduce((sum, m) => sum + m.miles, 0);
+                    document.getElementById('vMiles').textContent = `${miles} miles`;
+                }
+            } catch (e) {
+                console.error('Error loading profile:', e);
+            }
+        }
+
+        // Initialize
+        renderMotorways();
+    </script>
+</body>
+</html>
