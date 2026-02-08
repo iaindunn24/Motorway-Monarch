@@ -436,6 +436,14 @@
         }
 
         @media (max-width: 768px) {
+            html, body {
+                overflow-x: hidden;
+            }
+
+            .container {
+                overflow-x: hidden;
+            }
+
             h1 {
                 font-size: 2.5rem;
             }
@@ -444,12 +452,28 @@
                 padding: 1.5rem 2rem;
             }
 
+            /* User info buttons stacked vertically */
+            .user-info > div {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
             #map {
                 height: 500px;
             }
 
             .leaderboard-table {
-                font-size: 0.85rem;
+                font-size: 0.7rem;
+            }
+
+            .leaderboard-table th,
+            .leaderboard-table td {
+                padding: 0.5rem 0.3rem;
+                font-size: 0.7rem;
             }
         }
 
