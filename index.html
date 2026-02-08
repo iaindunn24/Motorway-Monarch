@@ -1124,7 +1124,7 @@ const firebaseConfig = {
             toggleMotorway(number);
             updateMapLayer(number);
             map.closePopup();
-            setTimeout(() => motorwayLayers[number].openPopup(), 100);
+            // Popup stays closed after toggling - will open again when clicking another motorway
         }
 
         function updateMapLayer(number) {
