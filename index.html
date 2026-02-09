@@ -979,17 +979,22 @@ const firebaseConfig = {
 
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 
-                // Send email verification
-                await userCredential.user.sendEmailVerification();
-                
+                // Create user document in Firestore BEFORE auth state change fully processes
                 await db.collection('users').doc(userCredential.user.uid).set({
                     username: username,
                     visitedMotorways: [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                // Wait a moment for Firestore to sync, then reload user data
+                setTimeout(() => {
+                    if (currentUser) {
+                        loadUserData();
+                    }
+                }, 500);
+                
                 errorEl.textContent = '';
-                successEl.textContent = 'Account created! Please check your email to verify your account.';
+                successEl.textContent = 'Account created successfully!';
             } catch (error) {
                 errorEl.textContent = error.message;
                 successEl.textContent = '';
@@ -1063,13 +1068,25 @@ const firebaseConfig = {
         async function loadUserData() {
             if (!currentUser) return;
 
-            const userDoc = await db.collection('users').doc(currentUser.uid).get();
-            const userData = userDoc.data();
-            
-            document.getElementById('username').textContent = userData.username;
-            visitedMotorways = new Set(userData.visitedMotorways || []);
-            renderMotorways();
-            loadLeaderboard();
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    document.getElementById('username').textContent = userData.username || 'Monarch';
+                    visitedMotorways = new Set(userData.visitedMotorways || []);
+                } else {
+                    // User document doesn't exist yet - shouldn't happen but handle it
+                    console.error('User document not found');
+                    document.getElementById('username').textContent = 'Monarch';
+                }
+                
+                renderMotorways();
+                loadLeaderboard();
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                document.getElementById('username').textContent = 'Monarch';
+            }
         }
 
         async function saveUserData() {
