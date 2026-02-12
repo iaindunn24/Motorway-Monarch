@@ -834,6 +834,39 @@
             </div>
         </div>
 
+        <!-- Motorway Stats Modal -->
+        <div id="statsModal" class="modal-overlay hidden" onclick="if(event.target===this) closeStatsModal()">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2 id="statsMotorwayTitle">M1 Statistics</h2>
+                    <button class="close-btn" onclick="closeStatsModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: var(--crown-gold); margin-bottom: 0.5rem;">📊 Usage Statistics</h3>
+                        <p><strong>Visited by:</strong> <span id="statsPercentage">Loading...</span> of users</p>
+                        <p><strong>Total visits:</strong> <span id="statsVisitors">Loading...</span></p>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: var(--crown-gold); margin-bottom: 0.5rem;">🛣️ Motorway Info</h3>
+                        <p><strong>Length:</strong> <span id="statsMiles">0</span> miles</p>
+                        <p><strong>Route:</strong> <span id="statsRoute">-</span></p>
+                        <p><strong>Opened:</strong> <span id="statsOpened">-</span></p>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--crown-gold); margin-bottom: 0.5rem;">📜 Did You Know?</h3>
+                        <p id="statsFact" style="font-style: italic; opacity: 0.9;">-</p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="toggleMotorwayFromStats()" id="statsToggleBtn" style="width: 100%; margin-top: 1.5rem;">
+                        <span id="statsToggleText">Mark as Visited</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Leaderboard -->
         <div id="leaderboard" class="leaderboard">
             <h2>🏆 Kingdom Leaderboard 🏆</h2>
@@ -880,12 +913,12 @@ const firebaseConfig = {
         const db = firebase.firestore();
 
         const motorways = [
-            { number: 'M1', name: 'London - Leeds', miles: 193, coords: [[51.5074, -0.1278], [51.6547, -0.3962], [52.0406, -0.7594], [52.2297, -0.8897], [52.5695, -1.1743], [52.9225, -1.4746], [53.3308, -1.3659], [53.8008, -1.5491]] },
+            { number: 'M1', name: 'London - Leeds', miles: 193, coords: [[51.5879, -0.2789], [51.7547, -0.3962], [51.8906, -0.5794], [52.0406, -0.7594], [52.2297, -0.8897], [52.3695, -0.9743], [52.5695, -1.1743], [52.7225, -1.2746], [52.9225, -1.4746], [53.1308, -1.3959], [53.3308, -1.3659], [53.5508, -1.4491], [53.8008, -1.5491]] },
             { number: 'M2', name: 'Medway', miles: 26, coords: [[51.3555, 0.5099], [51.3744, 0.6855], [51.3891, 0.7845]] },
             { number: 'M3', name: 'London - Southampton', miles: 59, coords: [[51.4074, -0.4078], [51.3074, -0.5578], [51.2653, -0.7486], [51.1789, -1.0211], [51.0537, -1.3088], [50.9097, -1.4044]] },
             { number: 'M4', name: 'London - South Wales', miles: 189, coords: [[51.4892, -0.4728], [51.5074, -0.6278], [51.4816, -0.9735], [51.4529, -1.3342], [51.4584, -1.7848], [51.4816, -2.5979], [51.4816, -3.1791]] },
             { number: 'M5', name: 'Birmingham - Exeter', miles: 163, coords: [[52.4862, -1.8904], [52.1872, -2.2204], [51.8987, -2.0783], [51.7520, -2.2296], [51.4545, -2.5879], [51.0198, -2.7266], [50.8184, -3.0339], [50.7184, -3.5339]] },
-            { number: 'M6', name: 'Rugby - Carlisle', miles: 230, coords: [[52.3707, -1.2651], [52.4862, -1.8904], [52.5911, -2.1269], [52.8007, -2.1199], [53.0765, -2.1787], [53.3808, -2.3426], [53.4808, -2.2426], [53.6489, -2.5370], [53.7632, -2.7031], [54.0487, -2.7688], [54.3781, -2.9609], [54.6516, -3.0507], [54.8951, -2.9382]] },
+            { number: 'M6', name: 'Rugby - Carlisle', miles: 230, coords: [[52.3707, -1.2651], [52.4862, -1.8904], [52.5911, -2.1269], [52.7007, -2.1599], [52.8007, -2.1199], [52.9765, -2.1987], [53.0765, -2.1787], [53.2308, -2.2926], [53.3808, -2.3426], [53.4808, -2.2426], [53.6489, -2.5370], [53.7632, -2.7031], [54.0487, -2.7688], [54.2081, -2.8609], [54.3781, -2.9609], [54.5516, -3.0207], [54.6516, -3.0507], [54.8951, -2.9382]] },
             { number: 'M8', name: 'Edinburgh - Glasgow', miles: 60, coords: [[55.9533, -3.1883], [55.9264, -3.4308], [55.8842, -3.8818], [55.8642, -4.2518]] },
             { number: 'M9', name: 'Edinburgh - Stirling', miles: 33, coords: [[55.9533, -3.1883], [55.9842, -3.4119], [56.0344, -3.6233], [56.1165, -3.9369]] },
             { number: 'M11', name: 'London - Cambridge', miles: 55, coords: [[51.5774, 0.0022], [51.6774, 0.0622], [51.7839, 0.1050], [51.8839, 0.1450], [52.0230, 0.1751], [52.2053, 0.1218]] },
@@ -910,7 +943,7 @@ const firebaseConfig = {
             { number: 'M58', name: 'Ormskirk Spur', miles: 12, coords: [[53.4808, -2.9426], [53.5108, -2.9226], [53.5408, -2.8826]] },
             { number: 'M60', name: 'Manchester Orbital', miles: 36, coords: [[53.4808, -2.2426]] },
             { number: 'M61', name: 'Manchester - Preston', miles: 20, coords: [[53.5208, -2.3826], [53.5908, -2.4926], [53.6608, -2.5826], [53.7632, -2.7031]] },
-            { number: 'M62', name: 'Liverpool - Hull', miles: 107, coords: [[53.4084, -2.9916], [53.4508, -2.7426], [53.4808, -2.2426], [53.5651, -1.9276], [53.6956, -1.5367], [53.7456, -0.9367], [53.7656, -0.5367], [53.7456, -0.3367]] },
+            { number: 'M62', name: 'Liverpool - Hull', miles: 107, coords: [[53.4084, -2.9916], [53.4508, -2.7426], [53.4808, -2.5426], [53.4808, -2.2426], [53.5651, -1.9276], [53.6756, -1.6867], [53.6956, -1.5367], [53.7456, -1.2367], [53.7456, -0.9367], [53.7656, -0.6367], [53.7656, -0.5367], [53.7456, -0.3367]] },
             { number: 'M65', name: 'Preston - Colne', miles: 25, coords: [[53.7632, -2.7031], [53.7932, -2.5531], [53.8265, -2.3704], [53.8565, -2.1704]] },
             { number: 'M66', name: 'Bury Spur', miles: 8, coords: [[53.5933, -2.2976], [53.6033, -2.2776], [53.6133, -2.2576]] },
             { number: 'M67', name: 'Hyde Bypass', miles: 4, coords: [[53.4508, -2.0826], [53.4608, -2.0726], [53.4708, -2.0626]] },
@@ -929,6 +962,60 @@ const firebaseConfig = {
             { number: 'M621', name: 'Leeds', miles: 7, coords: [[53.7755, -1.5678], [53.7855, -1.5578], [53.7955, -1.5478]] },
             { number: 'M876', name: 'Bonnybridge - Kincardine', miles: 7, coords: [[56.0222, -3.8889], [56.0422, -3.8189], [56.0622, -3.7489]] }
         ];
+
+        // Motorway historical and statistical data
+        const motorwayInfo = {
+            'M1': { opened: 1959, fact: 'Britain\'s first full-length motorway, opened by Transport Minister Ernest Marples.' },
+            'M2': { opened: 1963, fact: 'Connects the Medway Towns to the Channel ports.' },
+            'M3': { opened: 1971, fact: 'Originally planned to extend to Southampton Docks.' },
+            'M4': { opened: 1971, fact: 'Known as the "Gateway to Wales", one of Britain\'s busiest motorways.' },
+            'M5': { opened: 1977, fact: 'The main route to the West Country and Southwest England.' },
+            'M6': { opened: 1972, fact: 'Britain\'s longest motorway at 230 miles, from Rugby to Carlisle.' },
+            'M8': { opened: 1968, fact: 'Scotland\'s busiest motorway, connecting Edinburgh and Glasgow in just one hour.' },
+            'M9': { opened: 1980, fact: 'Links Edinburgh to Stirling and the Scottish Highlands.' },
+            'M11': { opened: 1980, fact: 'Connects London to Cambridge and Stansted Airport.' },
+            'M18': { opened: 1979, fact: 'Connects the M1 to the M62, serving South Yorkshire and Doncaster.' },
+            'M20': { opened: 1991, fact: 'The main route to the Channel Tunnel and Dover ferry port.' },
+            'M23': { opened: 1975, fact: 'Connects London to Gatwick Airport and the M25.' },
+            'M25': { opened: 1986, fact: 'Britain\'s orbital motorway around London, 117 miles long - one of Europe\'s busiest roads.' },
+            'M26': { opened: 1980, fact: 'Short link motorway between M25 and M20, just 10 miles long.' },
+            'M27': { opened: 1983, fact: 'Serves the south coast cities of Southampton and Portsmouth.' },
+            'M32': { opened: 1966, fact: 'One of Britain\'s first motorways, linking Bristol city centre to the M4.' },
+            'M40': { opened: 1991, fact: 'Built to relieve congestion on the M1, connecting London to Birmingham via Oxford.' },
+            'M42': { opened: 1989, fact: 'Features Britain\'s first "smart motorway" technology with variable speed limits.' },
+            'M45': { opened: 1959, fact: 'Originally part of the M1, now a short 7-mile spur to Coventry.' },
+            'M48': { opened: 1966, fact: 'The original Severn Bridge crossing before the Second Severn Crossing opened in 1996.' },
+            'M49': { opened: 1974, fact: 'Short 5-mile link connecting M4 and M5 at Avonmouth.' },
+            'M50': { opened: 1960, fact: 'One of Britain\'s earliest motorways, known as the Ross Spur.' },
+            'M53': { opened: 1971, fact: 'Connects Liverpool/Birkenhead to Chester and North Wales.' },
+            'M54': { opened: 1983, fact: 'Serves Telford new town and connects to Wolverhampton and the M6.' },
+            'M55': { opened: 1975, fact: 'The main route to Blackpool from the M6, serving the Lancashire coast.' },
+            'M56': { opened: 1981, fact: 'Connects Manchester to Chester, Manchester Airport, and North Wales.' },
+            'M57': { opened: 1972, fact: 'Liverpool\'s outer ring road motorway, 10 miles long.' },
+            'M58': { opened: 1980, fact: 'Connects Liverpool to Wigan and the new town of Skelmersdale.' },
+            'M60': { opened: 2000, fact: 'Manchester\'s orbital motorway, formed by linking several existing routes into one continuous ring.' },
+            'M61': { opened: 1970, fact: 'Connects Manchester to Preston via Bolton, a key route through Lancashire.' },
+            'M62': { opened: 1976, fact: 'Britain\'s highest motorway, crossing the Pennines at 1,221 feet above sea level.' },
+            'M65': { opened: 1997, fact: 'Serves East Lancashire towns including Blackburn, Burnley, and Accrington.' },
+            'M66': { opened: 1978, fact: 'Short 8-mile spur to Bury from the M60/M62 junction.' },
+            'M67': { opened: 1981, fact: 'The Hyde bypass, connecting Manchester to the Peak District.' },
+            'M69': { opened: 1977, fact: 'Links Coventry to Leicester and the East Midlands via Hinckley.' },
+            'M73': { opened: 1971, fact: 'East of Glasgow motorway, part of Scotland\'s central motorway network.' },
+            'M74': { opened: 1995, fact: 'Extended Glasgow\'s M8 to the border, completing the main Scotland-England route.' },
+            'M77': { opened: 1997, fact: 'Glasgow\'s southwestern motorway towards Ayrshire and Prestwick Airport.' },
+            'M80': { opened: 1992, fact: 'Upgraded from the A80, connecting Glasgow to Stirling via Cumbernauld.' },
+            'M90': { opened: 1978, fact: 'Crosses the Forth Road Bridge, linking Edinburgh to Perth and the Highlands.' },
+            'M180': { opened: 1979, fact: 'Connects the M18 to Scunthorpe and Grimsby, serving the Humber ports.' },
+            'M181': { opened: 1979, fact: 'Short 2-mile spur to Scunthorpe town centre and the steelworks.' },
+            'M271': { opened: 1975, fact: 'Links Southampton city centre to the M27 and the busy container port.' },
+            'M275': { opened: 1976, fact: 'Portsmouth\'s motorway spur to the city centre, naval base, and Continental ferries.' },
+            'M602': { opened: 1971, fact: 'Connects Salford and Eccles to the M60/M62, serving Greater Manchester.' },
+            'M606': { opened: 1973, fact: 'Bradford\'s motorway spur from the M62, just 3 miles long.' },
+            'M621': { opened: 1977, fact: 'Leeds city centre motorway link from the M1/M62, serving West Yorkshire.' },
+            'M876': { opened: 1980, fact: 'Short link to the Kincardine Bridge and Clackmannanshire in central Scotland.' }
+        };
+
+        let currentStatsMotorway = null; // Track which motorway's stats are displayed
 
         let visitedMotorways = new Set();
         let map = null;
@@ -1227,6 +1314,13 @@ const firebaseConfig = {
                             <div style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; margin-bottom: 1rem; color: ${visitedMotorways.has(motorway.number) ? '#00843D' : '#FF8C00'}; font-weight: 600;">
                                 ${visitedMotorways.has(motorway.number) ? '✓ Visited' : '○ Not Visited'}
                             </div>
+                            <button onclick="openStatsModal('${motorway.number}')" 
+                                    style="width: 100%; padding: 0.7rem; background: #FFD700; border: none; 
+                                           color: #333; font-family: 'Oswald', sans-serif; 
+                                           font-weight: 600; cursor: pointer; text-transform: uppercase;
+                                           border-radius: 5px; font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                📊 View Stats
+                            </button>
                             ${currentUser ? `
                                 <button onclick="toggleMotorwayFromMap('${motorway.number}')" 
                                         style="width: 100%; padding: 0.8rem; background: #FF8C00; border: none; 
@@ -1287,16 +1381,9 @@ const firebaseConfig = {
                     <div class="motorway-number">${motorway.number}</div>
                     <div class="motorway-name">${motorway.name}</div>
                 `;
+                // Open stats modal on click instead of direct toggle
                 item.onclick = () => {
-                    if (currentUser) {
-                        toggleMotorway(motorway.number);
-                        // Update map if it exists
-                        if (map && motorwayLayers[motorway.number]) {
-                            updateMapLayer(motorway.number);
-                        }
-                    } else {
-                        alert('Please sign in to track your progress');
-                    }
+                    openStatsModal(motorway.number);
                 };
                 grid.appendChild(item);
             });
@@ -1398,6 +1485,81 @@ const firebaseConfig = {
 
         function closeAccountModal() {
             document.getElementById('accountModal').classList.add('hidden');
+        }
+
+        async function openStatsModal(motorwayNumber) {
+            currentStatsMotorway = motorwayNumber;
+            const motorway = motorways.find(m => m.number === motorwayNumber);
+            const info = motorwayInfo[motorwayNumber];
+            
+            if (!motorway) return;
+            
+            // Set basic info
+            document.getElementById('statsMotorwayTitle').textContent = `${motorway.number} Statistics`;
+            document.getElementById('statsMiles').textContent = motorway.miles;
+            document.getElementById('statsRoute').textContent = motorway.name;
+            document.getElementById('statsOpened').textContent = info ? info.opened : 'Unknown';
+            document.getElementById('statsFact').textContent = info ? info.fact : 'No historical information available.';
+            
+            // Update toggle button
+            const isVisited = visitedMotorways.has(motorwayNumber);
+            const toggleBtn = document.getElementById('statsToggleBtn');
+            const toggleText = document.getElementById('statsToggleText');
+            
+            if (currentUser) {
+                toggleBtn.style.display = 'block';
+                toggleText.textContent = isVisited ? 'Mark as Not Visited' : 'Mark as Visited';
+                toggleBtn.className = 'btn ' + (isVisited ? 'btn-secondary' : 'btn-primary');
+            } else {
+                toggleBtn.style.display = 'none';
+            }
+            
+            // Calculate stats from all users
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                let totalUsers = 0;
+                let visitedCount = 0;
+                
+                usersSnapshot.forEach(doc => {
+                    totalUsers++;
+                    const data = doc.data();
+                    const visited = data.visitedMotorways || [];
+                    if (visited.includes(motorwayNumber)) {
+                        visitedCount++;
+                    }
+                });
+                
+                const percentage = totalUsers > 0 ? Math.round((visitedCount / totalUsers) * 100) : 0;
+                document.getElementById('statsPercentage').textContent = `${percentage}% (${visitedCount}/${totalUsers})`;
+                document.getElementById('statsVisitors').textContent = visitedCount;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('statsPercentage').textContent = 'Unable to load';
+                document.getElementById('statsVisitors').textContent = '-';
+            }
+            
+            document.getElementById('statsModal').classList.remove('hidden');
+        }
+
+        function closeStatsModal() {
+            document.getElementById('statsModal').classList.add('hidden');
+        }
+
+        function toggleMotorwayFromStats() {
+            if (!currentUser || !currentStatsMotorway) return;
+            toggleMotorway(currentStatsMotorway);
+            
+            // Update the button immediately
+            const isVisited = visitedMotorways.has(currentStatsMotorway);
+            const toggleText = document.getElementById('statsToggleText');
+            const toggleBtn = document.getElementById('statsToggleBtn');
+            toggleText.textContent = isVisited ? 'Mark as Not Visited' : 'Mark as Visited';
+            toggleBtn.className = 'btn ' + (isVisited ? 'btn-secondary' : 'btn-primary');
+            
+            // Update map if visible
+            if (map && motorwayLayers[currentStatsMotorway]) {
+                updateMapLayer(currentStatsMotorway);
+            }
         }
 
         async function loadMyAccount() {
