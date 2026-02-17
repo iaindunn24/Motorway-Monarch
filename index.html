@@ -1444,7 +1444,7 @@ const firebaseConfig = {
 
         function resetProgress() {
             if (!currentUser) {
-                alert('Please sign in first');
+                showToast('Please sign in first', 'error');
                 return;
             }
             
@@ -1473,7 +1473,7 @@ const firebaseConfig = {
 
         function openMyAccount() {
             if (!currentUser) {
-                alert('Please sign in first');
+                showToast('Please sign in first', 'error');
                 return;
             }
             document.getElementById('modalTitle').textContent = 'My Account';
@@ -1591,7 +1591,7 @@ const firebaseConfig = {
         async function updateUsername() {
             const newName = document.getElementById('newUsername').value.trim();
             if (!newName || newName.length < 3 || newName.length > 20) {
-                alert('Username must be between 3 and 20 characters');
+                showToast('Username must be between 3 and 20 characters', 'error');
                 return;
             }
             
@@ -1604,13 +1604,13 @@ const firebaseConfig = {
                 }
             } catch (e) {
                 console.error('Error getting current username:', e);
-                alert('Error loading your current username. Please try again.');
+                showToast('Error loading your current username. Please try again.', 'error');
                 return;
             }
             
             // If username hasn't changed, no need to update
             if (currentUsername === newName) {
-                alert('This is already your username');
+                showToast('This is already your username', 'info');
                 return;
             }
             
@@ -1624,14 +1624,14 @@ const firebaseConfig = {
                     // Make sure it's not the current user's own document
                     const isDuplicate = usernameCheck.docs.some(doc => doc.id !== currentUser.uid);
                     if (isDuplicate) {
-                        alert('Username "' + newName + '" is already taken. Please choose another.');
+                        showToast('Username "' + newName + '" is already taken', 'error');
                         document.getElementById('newUsername').value = currentUsername;
                         return;
                     }
                 }
             } catch (e) {
                 console.error('Error checking username:', e);
-                alert('Error checking username availability. Please try again.');
+                showToast('Error checking username availability', 'error');
                 document.getElementById('newUsername').value = currentUsername;
                 return;
             }
@@ -1661,11 +1661,11 @@ const firebaseConfig = {
                 // Reload leaderboard to show updated name
                 await loadLeaderboard();
                 
-                alert('Username updated successfully!');
+                showToast('Username updated successfully!', 'success');
             } catch (e) {
                 console.error('Error updating username:', e);
                 document.getElementById('newUsername').value = currentUsername;
-                alert('Error updating username: ' + e.message);
+                showToast('Error updating username', 'error');
             }
         }
 
@@ -1675,10 +1675,10 @@ const firebaseConfig = {
                     location: document.getElementById('userLocation').value.trim(),
                     favouriteMotorway: document.getElementById('favouriteMotorway').value
                 });
-                alert('Settings saved successfully!');
+                showToast('Settings saved successfully!', 'success');
             } catch (e) {
                 console.error('Error saving settings:', e);
-                alert('Error saving settings. Please try again.');
+                showToast('Error saving settings', 'error');
             }
         }
 
@@ -1716,6 +1716,101 @@ const firebaseConfig = {
 
         // Initialize
         renderMotorways();
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 2rem;
+                right: 2rem;
+                background: ${type === 'success' ? '#00843D' : type === 'error' ? '#ff6b6b' : '#FFD700'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                font-family: 'Oswald', sans-serif;
+                font-weight: 600;
+                z-index: 100000;
+                animation: slideIn 0.3s ease-out;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Add toast animations to CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Cookie Consent
+        function acceptCookies() {
+            localStorage.setItem('cookiesAccepted', 'true');
+            document.getElementById('cookieConsent').style.display = 'none';
+            showToast('Cookie preferences saved', 'success');
+        }
+
+        // Check if cookies already accepted
+        if (localStorage.getItem('cookiesAccepted')) {
+            const banner = document.getElementById('cookieConsent');
+            if (banner) banner.style.display = 'none';
+        }
     </script>
+
+    <!-- Cookie Consent Banner -->
+    <div id="cookieConsent" style="position: fixed; bottom: 0; left: 0; right: 0; background: #2a2a2a; color: white; padding: 1.5rem; z-index: 99999; border-top: 3px solid #FFD700; box-shadow: 0 -4px 12px rgba(0,0,0,0.5);">
+        <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px;">
+                <p style="margin: 0; font-family: 'Fira Mono', monospace; font-size: 0.9rem;">
+                    🍪 We use essential cookies to keep you logged in. No tracking or advertising cookies. 
+                    <a href="privacy.html" style="color: #FFD700; text-decoration: underline;">Learn more</a>
+                </p>
+            </div>
+            <button onclick="acceptCookies()" style="background: #FFD700; color: #1a1a1a; border: none; padding: 0.75rem 2rem; font-family: 'Oswald', sans-serif; font-weight: 600; cursor: pointer; text-transform: uppercase; border-radius: 5px; white-space: nowrap;">
+                Accept
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background: #1a1a1a; padding: 2rem; text-align: center; margin-top: 4rem; border-top: 3px solid #0047AB;">
+        <p style="font-family: 'Oswald', sans-serif; color: #FFD700; margin-bottom: 1rem;">
+            Motorway Monarch © 2026 - Rule the Roads
+        </p>
+        <p style="font-family: 'Fira Mono', monospace; font-size: 0.85rem; color: #888;">
+            <a href="privacy.html" style="color: #0047AB; text-decoration: none; margin: 0 1rem;">Privacy Policy</a> | 
+            <a href="terms.html" style="color: #0047AB; text-decoration: none; margin: 0 1rem;">Terms of Service</a>
+        </p>
+        <p style="font-family: 'Fira Mono', monospace; font-size: 0.75rem; color: #666; margin-top: 1rem;">
+            A free, non-commercial hobby project. Not affiliated with any government agency.
+        </p>
+    </footer>
 </body>
 </html>
